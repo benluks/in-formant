@@ -37,11 +37,6 @@ set(SOURCES
     src/context/context.h
     src/context/contextbuilder.h
     src/context/contextmanager.cpp
-    src/context/ctxmgr_spectrogram.cpp
-    src/context/ctxmgr_fftspectrum.cpp
-    src/context/ctxmgr_oscilloscope.cpp
-    src/context/ctxmgr_settings.cpp
-    src/context/ctxmgr_synth.cpp
     src/context/contextmanager.h
     src/backtrace/backtrace.h
     src/android_redirect_log.cpp
@@ -54,17 +49,8 @@ set(SOURCES
     src/modules/audio/resampler/resampler.cpp
     src/modules/audio/resampler/resampler.h
     src/modules/audio/audio.h
-    src/modules/target/base/base.cpp
-    src/modules/target/base/base.h
-    src/modules/target/target.h
-    src/modules/renderer/base/base.cpp
-    src/modules/renderer/base/parameters.h
-    src/modules/renderer/base/base.h
-    src/modules/renderer/renderer.h
     src/modules/app/pipeline/pipeline.cpp
     src/modules/app/pipeline/pipeline.h
-    src/modules/app/synthesizer/synthesizer.cpp
-    src/modules/app/synthesizer/synthesizer.h
     src/modules/app/app.h
     src/modules/modules.h
     src/nodes/node/nodeio_audiotime.cpp
@@ -158,41 +144,9 @@ set(SOURCES
     src/analysis/util/zerocros.cpp
     src/analysis/util/util.h
     src/analysis/analysis.h
-    src/synthesis/noise.cpp
-    src/synthesis/filter.cpp
-    src/synthesis/sosfilter.cpp
-    src/synthesis/glotLf.cpp
-    src/synthesis/shiftFilter.cpp
-    src/synthesis/polyFromRoots.cpp
-    src/synthesis/synthesis.h
     external/r8brain-free-src/r8bbase.cpp
     external/r8brain-free-src/pffft.cpp
 )
-
-set(GL_SHADER_SOURCES
-    src/modules/renderer/opengl/shaders/graph.frag
-    src/modules/renderer/opengl/shaders/graph.vert
-    src/modules/renderer/opengl/shaders/spectrogram.frag
-    src/modules/renderer/opengl/shaders/spectrogram.vert
-    src/modules/renderer/opengl/shaders/text.frag
-    src/modules/renderer/opengl/shaders/text.vert
-)
-
-set(GLES_SHADER_SOURCES
-    src/modules/renderer/gles/shaders/graph.frag
-    src/modules/renderer/gles/shaders/graph.vert
-    src/modules/renderer/gles/shaders/spectrogram.frag
-    src/modules/renderer/gles/shaders/spectrogram.vert
-)
-
-set(VK_SHADER_SOURCES
-    src/modules/renderer/vulkan/shaders/graph.frag
-    src/modules/renderer/vulkan/shaders/graph.vert
-    src/modules/renderer/vulkan/shaders/spectrogram.frag
-    src/modules/renderer/vulkan/shaders/spectrogram.vert
-)
-
-### REQUIRED MODULES
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(Eigen3 REQUIRED eigen3)
@@ -206,8 +160,6 @@ check_low_level_exit(
 
 set(SOXR_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/external/r8brain-free-src)
 
-set(NANOSVG_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/external/nanosvg)
-
 ### SEARCH AUDIO MODULES 
 
 if(TRUE)
@@ -216,26 +168,6 @@ if(TRUE)
     list(APPEND SOURCES
         src/modules/audio/dummy/dummy.cpp
         src/modules/audio/dummy/dummy
-    )
-endif()
-
-pkg_check_modules(alsa QUIET alsa)
-if(alsa_FOUND)
-    message(STATUS "Including audio module: alsa")
-    set(AUDIO_USE_ALSA TRUE)
-    list(APPEND SOURCES
-        src/modules/audio/alsa/alsa.cpp
-        src/modules/audio/alsa/alsa.h
-    )
-endif()
-
-pkg_check_modules(pulse QUIET libpulse)
-if(pulse_FOUND)
-    message(STATUS "Including audio module: pulse")
-    set(AUDIO_USE_PULSE TRUE)
-    list(APPEND SOURCES
-        src/modules/audio/pulse/pulse.cpp
-        src/modules/audio/pulse/pulse.h
     )
 endif()
 
@@ -249,211 +181,40 @@ if(portaudio_FOUND)
     )
 endif()
 
-if(ANDROID)
-    message(STATUS "Including audio module: oboe")
-    set(OBOE_DIR ${PROJECT_SOURCE_DIR}/external/oboe)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
-    add_subdirectory(${OBOE_DIR} ${PROJECT_BINARY_DIR}/oboe)
-    set(AUDIO_USE_OBOE TRUE)
-    list(APPEND SOURCES
-        src/modules/audio/oboe/oboe.cpp
-        src/modules/audio/oboe/oboe.h
-    )
-endif()
-
-if(EMSCRIPTEN)
-    message(STATUS "Including audio module: webaudio")
-    set(AUDIO_USE_WEBAUDIO TRUE)
-    list(APPEND SOURCES
-        src/modules/audio/webaudio/webaudio.cpp
-        src/modules/audio/webaudio/webaudio.h)
-endif()
-
-### SEARCH TARGET MODULES
-
-pkg_check_modules(sdl2 QUIET sdl2)
-if(sdl2_FOUND)
-    message(STATUS "Including target module: sdl2")
-    set(TARGET_USE_SDL2 TRUE)
-    list(APPEND SOURCES
-        src/modules/target/sdl2/sdl2.cpp
-        src/modules/target/sdl2/sdl2.h
-    )
-
-    # point to GLEW
-    set(GLEW_INCLUDE_DIRS /usr/local/opt/glew/include)
-    set(GLEW_LIBRARIES /usr/local/opt/glew/lib/libGLEW.dylib)
-
-    message(STATUS "GLEW has been linked")
-endif()
-
-### SEARCH RENDERER MODULES 
-
-#[[
-
-set(OpenGL_GL_PREFERENCE GLVND)
-find_package(OpenGL QUIET)
-if(OpenGL_FOUND)
-    message(STATUS "Including renderer module: opengl")
-    set(RENDERER_USE_OPENGL TRUE)
-    list(APPEND SOURCES
-        src/modules/renderer/opengl/opengl.cpp
-        src/modules/renderer/opengl/shaderprogram.cpp
-        src/modules/renderer/opengl/fontattachment.cpp
-        src/modules/renderer/opengl/opengl.h
-    )
-    if(TARGET_USE_SDL2)
-        list(APPEND SOURCES
-            src/modules/target/sdl2/sdl2_opengl.cpp
-        )
-    endif()
-    include(${CMAKE_SUPPORT_DIR}/ShaderTarget.cmake)
-endif()
-
-find_package(OpenGLES QUIET)
-if(OpenGLES_FOUND)
-    message(STATUS "Including renderer module: gles")
-    set(RENDERER_USE_GLES TRUE)
-    list(APPEND SOURCES
-        src/modules/renderer/gles/gles.cpp
-        src/modules/renderer/gles/gles.h
-    )
-    if(TARGET_USE_SDL2)
-        list(APPEND SOURCES
-            src/modules/target/sdl2/sdl2_opengl.cpp
-        )
-    endif()
-    include(${CMAKE_SUPPORT_DIR}/ShaderTarget.cmake)
-endif()
-
-find_package(Vulkan QUIET)
-if(Vulkan_FOUND)
-    message(STATUS "Including renderer module: vulkan")
-    set(RENDERER_USE_VULKAN TRUE)
-    list(APPEND SOURCES
-        src/modules/renderer/vulkan/vulkan.cpp
-        src/modules/renderer/vulkan/vulkan.h
-        src/modules/renderer/vulkan/utils.cpp
-        src/modules/renderer/vulkan/utils.hpp
-    )
-    if(TARGET_USE_SDL2)
-        list(APPEND SOURCES
-            src/modules/target/sdl2/sdl2_vulkan.cpp
-        )
-    endif()
-    include(${CMAKE_SUPPORT_DIR}/ShaderTarget.cmake)
-endif()
-
-if(sdl2_FOUND)
-    message(STATUS "Including renderer module: sdl2")
-    set(RENDERER_USE_SDL2 TRUE)
-    list(APPEND SOURCES
-        src/modules/renderer/sdl2/sdl2.cpp
-        src/modules/renderer/sdl2/sdl2.h
-        src/modules/renderer/sdl2/fontattachment.cpp
-    )
-    if(TARGET_USE_SDL2)
-        list(APPEND SOURCES
-            src/modules/target/sdl2/sdl2_renderer.cpp
-        )
-    endif()
-endif()
-
-]]
-
-if(TRUE)
-    message(STATUS "Including renderer module: nanovg")
-    set(NVG_DIR ${PROJECT_SOURCE_DIR}/external/nanovg)
-    add_subdirectory(${NVG_DIR} ${PROJECT_BINARY_DIR}/nanovg)
-    set(RENDERER_USE_NVG TRUE)
-    list(APPEND SOURCES
-        src/modules/renderer/nanovg/nanovg.cpp
-        src/modules/renderer/nanovg/nanovg.h
-        src/modules/renderer/nanovg/fontattachment.cpp
-        src/modules/renderer/nanovg/nvg_gl.c
-        src/modules/renderer/nanovg/nvg_gl.h)
-    if(TARGET_USE_SDL2)
-        list(APPEND SOURCES
-            src/modules/target/sdl2/sdl2_nanovg.cpp
-        )
-    endif()
-endif()
-
-### FREETYPE MODULE
-
-if(TRUE)
-    message(STATUS "Including font module: freetype")
-    set(FREETYPE_DIR ${PROJECT_SOURCE_DIR}/external/freetype)
-    set(BUILD_SHARED_LIBS TRUE)
-
-    # modifications to avoid `add_subdirectory`
-    set(FREETYPE_PREFIX /usr/local/opt/freetype)
-
-    # Manually set the FreeType include and library directories
-    set(FREETYPE_INCLUDE_DIRS ${FREETYPE_PREFIX}/include/freetype2)
-    set(FREETYPE_LIBRARIES ${FREETYPE_PREFIX}/lib/libfreetype.dylib)
-
-    include_directories(${FREETYPE_INCLUDE_DIRS})
-    list(APPEND LIBRARIES ${FREETYPE_LIBRARIES})
-
-    # add_subdirectory(${FREETYPE_DIR} ${PROJECT_BINARY_DIR}/freetype)
-    set(FONT_USE_FREETYPE TRUE)
-    list(APPEND SOURCES
-        src/modules/freetype/instance.cpp
-        src/modules/freetype/fontfile.cpp
-        src/modules/freetype/font.cpp
-        src/modules/freetype/freetype.h
-    )
-endif()
-
-# sanity test
-message(STATUS "FreeType libraries specified: ${FREETYPE_LIBRARIES}")
-
-
 ### CREATE CMAKE TARGET
 
-if(ANDROID)
-    add_library(speech-analysis SHARED ${SOURCES})
-else()
-    add_executable(speech-analysis ${SOURCES})
-endif()
+add_executable(speech-analysis ${SOURCES})
 
-target_include_directories(speech-analysis SYSTEM PUBLIC ${SDL2_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${SOXR_INCLUDE_DIR} ${NANOSVG_INCLUDE_DIR} ${PROJECT_SOURCE_DIR}/external/armadillo/include ${GLEW_INCLUDE_DIRS})
-target_link_libraries(speech-analysis PUBLIC ${SDL2_LDFLAGS} ${Eigen3_LDFLAGS} ${FFTW_LDFLAGS} ${SOXR_LIBRARIES} ${GLEW_LIBRARIES})
+target_include_directories(speech-analysis SYSTEM PUBLIC ${Eigen3_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${SOXR_INCLUDE_DIR} ${PROJECT_SOURCE_DIR}/external/armadillo/include)
+target_link_libraries(speech-analysis PUBLIC ${Eigen3_LDFLAGS} ${FFTW_LDFLAGS} ${SOXR_LIBRARIES})
 
 target_compile_definitions(speech-analysis PUBLIC -DR8B_PFFFT=1 -DARMA_DONT_USE_WRAPPER)
-
-if(RENDERER_USE_OPENGL OR RENDERER_USE_VULKAN)
-    if(RENDERER_USE_OPENGL)
-        add_shader_dependencies(TARGET speech-analysis SEMANTICS OpenGL SOURCES ${GL_SHADER_SOURCES})
-    endif()
-    if(RENDERER_USE_GLES)
-        add_shader_dependencies(TARGET speech-analysis SEMANTICS GLES SOURCES ${GLES_SHADER_SOURCES})
-    endif()
-    if(RENDERER_USE_VULKAN)
-        add_shader_dependencies(TARGET speech-analysis SEMANTICS Vulkan SOURCES ${VK_SHADER_SOURCES})
-    endif()
-endif()
 
 if(AUDIO_USE_DUMMY)
     target_compile_definitions(speech-analysis PUBLIC -DAUDIO_USE_DUMMY=1)
 endif()
 
-if(AUDIO_USE_ALSA)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${alsa_INCLUDE_DIRS})
-    target_link_libraries(speech-analysis PUBLIC ${alsa_LDFLAGS})
-    target_compile_definitions(speech-analysis PUBLIC -DAUDIO_USE_ALSA=1)
-endif()
-
-if(AUDIO_USE_PULSE)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${pulse_INCLUDE_DIRS})
-    target_link_libraries(speech-analysis PUBLIC ${pulse_LDFLAGS})
-    target_compile_definitions(speech-analysis PUBLIC -DAUDIO_USE_PULSE=1)
-endif()
-
 if(AUDIO_USE_PORTAUDIO)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${portaudio_INCLUDE_DIRS})
-    target_link_libraries(speech-analysis PUBLIC ${portaudio_LIBRARIES})
+    # Specify the path to the PortAudio library
+    set(PORTAUDIO_INCLUDE_DIRS "/usr/local/include")
+    set(PORTAUDIO_LIBRARIES "/usr/local/Cellar/portaudio/19.7.0/lib/libportaudio.2.dylib")
+
+    # Manually specify the PortAudio static library
+    # set(PORTAUDIO_LIB "${PORTAUDIO_LIBRARY_DIR}/libportaudio.a")
+
+    include_directories(${PORTAUDIO_INCLUDE_DIR})
+    # Add the PortAudio include directory
+    include_directories(${PROJECT_SOURCE_DIR}/include)
+
+    # Add any necessary frameworks (for macOS)
+    find_library(AUDIOUNIT_FRAMEWORK AudioUnit)
+    find_library(AUDIO_TOOLBOX_FRAMEWORK AudioToolbox)
+    find_library(COREAUDIO_FRAMEWORK CoreAudio)
+    find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation)
+    find_library(CORE_SERVICES_FRAMEWORK CoreServices)
+
+    target_include_directories(speech-analysis SYSTEM PUBLIC ${PORTAUDIO_INCLUDE_DIRS})
+    target_link_libraries(speech-analysis PUBLIC ${PORTAUDIO_LIBRARIES})
     target_compile_definitions(speech-analysis PUBLIC -DAUDIO_USE_PORTAUDIO=1)
 endif()
 
@@ -463,109 +224,9 @@ if(AUDIO_USE_OBOE)
     target_compile_definitions(speech-analysis PUBLIC -DAUDIO_USE_OBOE=1)
 endif()
 
-if(AUDIO_USE_WEBAUDIO)
-    target_compile_definitions(speech-analysis PUBLIC -DAUDIO_USE_WEBAUDIO=1)
-endif()
-
-if(TARGET_USE_SDL2)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${sdl2_INCLUDE_DIRS})
-    target_link_libraries(speech-analysis PUBLIC ${sdl2_LDFLAGS})
-    target_compile_definitions(speech-analysis PUBLIC -DTARGET_USE_SDL2=1)
-endif()
-
-if(RENDERER_USE_OPENGL)
-    message(STATUS "Renderer using OpenGL")
-    target_sources(speech-analysis PUBLIC $ENV{GLEW_SOURCE_FILE})
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${GLEW_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIRS})
-    target_link_libraries(speech-analysis PUBLIC ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
-    target_compile_definitions(speech-analysis PUBLIC -DRENDERER_USE_OPENGL=1 -DGLEW_STATIC -DGLEW_NO_GLU)
-endif()
-
-if(RENDERER_USE_GLES)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${OpenGLES_INCLUDE_DIRS})
-    target_link_libraries(speech-analysis PUBLIC ${OpenGLES_LIBRARIES})
-    target_compile_definitions(speech-analysis PUBLIC -DRENDERER_USE_GLES=1)
-endif()
-
-if(RENDERER_USE_VULKAN)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${Vulkan_INCLUDE_DIRS})
-    target_link_libraries(speech-analysis PUBLIC ${Vulkan_LIBRARIES})
-    target_compile_definitions(speech-analysis PUBLIC -DRENDERER_USE_VULKAN=1)
-endif()
-
-if(RENDERER_USE_SDL2)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${sdl2_INCLUDE_DIRS})
-    target_link_libraries(speech-analysis PUBLIC ${sdl2_LDFLAGS})
-    target_compile_definitions(speech-analysis PUBLIC -DTARGET_USE_SDL2=1)
-endif()
-
-if(RENDERER_USE_NVG)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${NVG_DIR}/src)
-    target_link_libraries(speech-analysis PUBLIC nanovg)
-    target_compile_definitions(speech-analysis PUBLIC -DRENDERER_USE_NVG=1)
-
-#[[ Future code for Metal render support
-    if(APPLE)
-        find_package(Metal REQUIRED)
-        target_include_directories(speech-analysis SYSTEM PUBLIC ${METAL_INCLUDE_DIR})
-        target_link_libraries(speech-analysis PUBLIC ${METAL_LIBRARIES})
-    elseif(ANDROID)
-]]
-
-    if(ANDROID)
-        find_package(OpenGLES3 QUIET)
-        target_include_directories(speech-analysis SYSTEM PUBLIC ${OpenGLES3_INCLUDE_DIRS})
-        target_link_libraries(speech-analysis PUBLIC ${OpenGLES3_LIBRARIES})
-    elseif(EMSCRIPTEN)
-        #find_package(OpenGLES2 QUIET)
-        #target_include_directories(speech-analysis SYSTEM PUBLIC ${OpenGLES2_INCLUDE_DIRS})
-        #target_link_libraries(speech-analysis PUBLIC ${OpenGLES2_LIBRARIES})
-    elseif(UNIX OR WIN32 OR APPLE)
-        set(OpenGL_GL_PREFERENCE GLVND)
-        find_package(OpenGL QUIET)
-        target_include_directories(speech-analysis SYSTEM PUBLIC ${OPENGL_INCLUDE_DIRS})
-        target_link_libraries(speech-analysis PUBLIC ${OPENGL_LIBRARIES})
-
-        target_sources(speech-analysis PUBLIC $ENV{GLEW_SOURCE_FILE})
-        target_compile_definitions(speech-analysis PUBLIC -DGLEW_STATIC -DGLEW_NO_GLU)
-    endif()
-endif()
-
-if(FONT_USE_FREETYPE)
-    target_include_directories(speech-analysis SYSTEM PUBLIC ${FREETYPE_DIR}/include)
-    target_link_libraries(speech-analysis PUBLIC ${FREETYPE_LIBRARIES})
-    target_compile_definitions(speech-analysis PUBLIC -DFONT_USE_FREETYPE=1)
-endif()
-
 ## PLATFORM SPECIFIC CODE
 
 set(RESAMPLER_QUALITY SOXR_HQ)
-
-if(EMSCRIPTEN)
-    set(EM_FLAGS "-sENVIRONMENT=web" "-sASSERTIONS=2" "-sINITIAL_MEMORY=32MB" "-sALLOW_MEMORY_GROWTH=1" "--no-heap-copy" "-sEMULATE_FUNCTION_POINTER_CASTS=1" "-sERROR_ON_UNDEFINED_SYMBOLS=1" "-sUSE_PTHREADS=0" #[["-sFULL_ES2=1"]] "-sEXIT_RUNTIME=1")
-
-    set(EMCC_FLAGS ${EM_FLAGS})
-    set(EMLD_FLAGS ${EM_FLAGS} "-sEXPORTED_FUNCTIONS=[_main,_webaudio_process_playback,_webaudio_process_capture]" "-sEXPORTED_RUNTIME_METHODS=[ccall]" "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$autoResumeAudioContext]" "--preload-file ${PROJECT_SOURCE_DIR}/Montserrat.otf@Montserrat.otf")
-
-    if (CMAKE_BUILD_TYPE MATCHES "^Debug$")
-        target_compile_options(speech-analysis PUBLIC ${EMCC_FLAGS} -g -g4 --source-map-base /)
-        target_link_libraries(speech-analysis PUBLIC ${EMLD_FLAGS} -g -g4 "--source-map-base /")
-    elseif (CMAKE_BUILD_TYPE MATCHES "^Release$")
-        target_compile_options(speech-analysis PUBLIC ${EMCC_FLAGS} -fno-rtti)
-        target_link_libraries(speech-analysis PUBLIC ${EMLD_FLAGS} -fno-rtti)
-    else()
-        target_compile_options(speech-analysis PUBLIC ${EMCC_FLAGS})
-        target_link_libraries(speech-analysis PUBLIC ${EMLD_FLAGS})
-    endif()
-endif()
-
-if(ANDROID)
-    target_sources(speech-analysis PUBLIC src/context/ctxmgr_androidcommon.cpp)
-    if(TARGET_USE_SDL2)
-        target_sources(speech-analysis PUBLIC src/modules/target/sdl2/sdl2_android.cpp)
-    endif()
-    target_link_libraries(speech-analysis PUBLIC android)
-endif()
 
 if(UNIX AND NOT EMSCRIPTEN)
     target_sources(speech-analysis PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backtrace/unix.cpp)
@@ -576,15 +237,6 @@ endif()
 if(NOT ANDROID AND NOT WIN32 AND CMAKE_BUILD_TYPE MATCHES "^Debug$")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=undefined")
     set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fsanitize=address -fsanitize=undefined")
-endif()
-
-if(WIN32)
-    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-        target_sources(speech-analysis PUBLIC src/backtrace/windows.cpp)
-    elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        target_sources(speech-analysis PUBLIC src/backtrace/windows64.cpp)
-    endif()
-    target_link_libraries(speech-analysis PUBLIC ntdll dbghelp)
 endif()
 
 target_compile_definitions(speech-analysis PUBLIC -DRESAMPLER_QUALITY=${RESAMPLER_QUALITY})
