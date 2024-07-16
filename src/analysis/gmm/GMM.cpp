@@ -325,7 +325,7 @@ double Gaussian_Mixture_Model::Gaussian_Distribution(double data[], double mean[
 	}
 	result = 1.0 / (pow(2 * 3.1415926535897931, dimension_data / 2.0) * sqrt(determinant)) * exp(-0.5 * sum);
 
-	if (isnan(result) || !finite(result)){
+	if (isnan(result) || !isfinite(result)){
 		fprintf(stderr, "[Gaussian Distribution], [The covariance matrix is rank deficient], [result: %lf]\n", result);
 	}
 	return result;
@@ -359,7 +359,7 @@ double Gaussian_Mixture_Model::Gaussian_Distribution(double data[], double mean[
 
 	result = 1.0 / (pow(2 * 3.1415926535897931, dimension_data / 2.0) * sqrt(matrix.Determinant(type_covariance, dimension_data, covariance))) * exp(-0.5 * sum);
 
-	if (isnan(result) || !finite(result)){
+	if (isnan(result) || !isfinite(result)){
 		fprintf(stderr, "[Gaussian Distribution], [The covariance matrix is rank deficient], [result: %lf]\n", result);
 	}
 	return result;

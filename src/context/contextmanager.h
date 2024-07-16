@@ -45,11 +45,6 @@ namespace Main {
         int analysisDuration;
         int analysisMaxFrequency;
 
-        int viewMinFrequency;
-        int viewMaxFrequency;
-        int viewMinGain;
-        int viewMaxGain;
-
         int fftLength;
         int fftMaxFrequency;
 

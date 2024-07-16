@@ -1,6 +1,5 @@
 #include "contextmanager.h"
 #include "contextbuilder.h"
-#include "../synthesis/synthesis.h"
 
 #include <iostream>
 #include <thread>
@@ -62,13 +61,8 @@ void ContextManager::loadSettings()
     analysisDuration = 35;
     analysisMaxFrequency = 4000;
 
-    viewMinFrequency = 1;
-    viewMaxFrequency = 6000;
-    viewMinGain = -80;
-    viewMaxGain = +0;
-
     fftLength = 2048;
-    fftMaxFrequency = viewMaxFrequency;
+    fftMaxFrequency = 6000;
 
     preEmphasisFrequency = 200.0f;
     
@@ -90,7 +84,7 @@ void ContextManager::loadSettings()
 
 void ContextManager::updateNodeParameters()
 {
-    fftMaxFrequency = viewMaxFrequency;
+    fftMaxFrequency = 6000;
 
     pipeline.setPitchSolver(ctx->pitchSolver.get());
     pipeline.setInvglotSolver(ctx->invglotSolver.get());
@@ -116,11 +110,19 @@ void ContextManager::updateWithNextFrame()
     lpSpecTrack.pop_front();
     lpSpecTrack.push_back(pipeline.getLpSpectrumSlice());
 
+    float pitch = pipeline.getPitch();
     pitchTrack.pop_front();
-    pitchTrack.push_back(pipeline.getPitch());
+    pitchTrack.push_back(pitch);
 
+    std::vector<Analysis::FormantData> formants = pipeline.getFormants();
     formantTrack.pop_front();
-    formantTrack.push_back(pipeline.getFormants());
+    formantTrack.push_back(formants);
+    
+    if (pitch > 40) {
+        std::cout << formants[0].frequency << " " << formants[1].frequency << std::endl;
+        std::cout << formants[0].bandwidth << " " << formants[1].bandwidth << std::endl;
+    }
+    
 
     soundTrack.pop_front();
     soundTrack.push_back(pipeline.getSound());
