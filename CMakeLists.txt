@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 set(CMAKE_OSX_DEPLOYMENT_TARGET $ENV{MACOSX_DEPLOYMENT_TARGET})
 project(speech-analysis)
 
+# Set the policy for CMP0076 to use absolute paths
+cmake_policy(SET CMP0076 NEW)
 set(CMAKE_SUPPORT_DIR "${PROJECT_SOURCE_DIR}/cmake_support")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SUPPORT_DIR}")
@@ -277,6 +279,12 @@ if(sdl2_FOUND)
         src/modules/target/sdl2/sdl2.cpp
         src/modules/target/sdl2/sdl2.h
     )
+
+    # point to GLEW
+    set(GLEW_INCLUDE_DIRS /usr/local/opt/glew/include)
+    set(GLEW_LIBRARIES /usr/local/opt/glew/lib/libGLEW.dylib)
+
+    message(STATUS "GLEW has been linked")
 endif()
 
 ### SEARCH RENDERER MODULES 
@@ -377,7 +385,18 @@ if(TRUE)
     message(STATUS "Including font module: freetype")
     set(FREETYPE_DIR ${PROJECT_SOURCE_DIR}/external/freetype)
     set(BUILD_SHARED_LIBS TRUE)
-    add_subdirectory(${FREETYPE_DIR} ${PROJECT_BINARY_DIR}/freetype)
+
+    # modifications to avoid `add_subdirectory`
+    set(FREETYPE_PREFIX /usr/local/opt/freetype)
+
+    # Manually set the FreeType include and library directories
+    set(FREETYPE_INCLUDE_DIRS ${FREETYPE_PREFIX}/include/freetype2)
+    set(FREETYPE_LIBRARIES ${FREETYPE_PREFIX}/lib/libfreetype.dylib)
+
+    include_directories(${FREETYPE_INCLUDE_DIRS})
+    list(APPEND LIBRARIES ${FREETYPE_LIBRARIES})
+
+    # add_subdirectory(${FREETYPE_DIR} ${PROJECT_BINARY_DIR}/freetype)
     set(FONT_USE_FREETYPE TRUE)
     list(APPEND SOURCES
         src/modules/freetype/instance.cpp
@@ -387,6 +406,10 @@ if(TRUE)
     )
 endif()
 
+# sanity test
+message(STATUS "FreeType libraries specified: ${FREETYPE_LIBRARIES}")
+
+
 ### CREATE CMAKE TARGET
 
 if(ANDROID)
@@ -395,8 +418,8 @@ else()
     add_executable(speech-analysis ${SOURCES})
 endif()
 
-target_include_directories(speech-analysis SYSTEM PUBLIC ${SDL2_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${SOXR_INCLUDE_DIR} ${NANOSVG_INCLUDE_DIR} ${PROJECT_SOURCE_DIR}/external/armadillo/include)
-target_link_libraries(speech-analysis PUBLIC ${SDL2_LDFLAGS} ${Eigen3_LDFLAGS} ${FFTW_LDFLAGS} ${SOXR_LIBRARIES})
+target_include_directories(speech-analysis SYSTEM PUBLIC ${SDL2_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${SOXR_INCLUDE_DIR} ${NANOSVG_INCLUDE_DIR} ${PROJECT_SOURCE_DIR}/external/armadillo/include ${GLEW_INCLUDE_DIRS})
+target_link_libraries(speech-analysis PUBLIC ${SDL2_LDFLAGS} ${Eigen3_LDFLAGS} ${FFTW_LDFLAGS} ${SOXR_LIBRARIES} ${GLEW_LIBRARIES})
 
 target_compile_definitions(speech-analysis PUBLIC -DR8B_PFFFT=1 -DARMA_DONT_USE_WRAPPER)
 
@@ -451,6 +474,7 @@ if(TARGET_USE_SDL2)
 endif()
 
 if(RENDERER_USE_OPENGL)
+    message(STATUS "Renderer using OpenGL")
     target_sources(speech-analysis PUBLIC $ENV{GLEW_SOURCE_FILE})
     target_include_directories(speech-analysis SYSTEM PUBLIC ${GLEW_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIRS})
     target_link_libraries(speech-analysis PUBLIC ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
@@ -509,7 +533,7 @@ endif()
 
 if(FONT_USE_FREETYPE)
     target_include_directories(speech-analysis SYSTEM PUBLIC ${FREETYPE_DIR}/include)
-    target_link_libraries(speech-analysis PUBLIC freetype)
+    target_link_libraries(speech-analysis PUBLIC ${FREETYPE_LIBRARIES})
     target_compile_definitions(speech-analysis PUBLIC -DFONT_USE_FREETYPE=1)
 endif()
 
@@ -544,7 +568,7 @@ if(ANDROID)
 endif()
 
 if(UNIX AND NOT EMSCRIPTEN)
-    target_sources(speech-analysis PUBLIC src/backtrace/unix.cpp)
+    target_sources(speech-analysis PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backtrace/unix.cpp)
     target_link_libraries(speech-analysis PUBLIC dl)
     set_target_properties(speech-analysis PROPERTIES LINK_FLAGS "-pthread -static-libstdc++")
 endif()
